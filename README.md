@@ -32,6 +32,21 @@ npm run build
 
 Next.js genera un sitio completamente estático en `out/`.
 
+## Si el proyecto quedó creado como Cloudflare Workers (no Pages)
+
+El despliegue de Workers Builds que ejecuta `npx wrangler deploy` está soportado **como sitio estático**, gracias al archivo `wrangler.jsonc` del repositorio. No se necesita ni se debe instalar OpenNext.
+
+Configuración en **Workers & Pages → controlador-impresora-web → Settings → Builds**:
+
+- Build command: `npm run build`
+- Deploy command: `npx wrangler deploy`
+- Root directory: raíz del repositorio
+- Node.js 22 (`NODE_VERSION=22`, si es necesario)
+
+Next.js crea `out/`; Wrangler publica sus archivos estáticos, sin código de backend.
+
+Si Cloudflare tenía guardada una migración automática previa, volver a desplegar el último commit de `main` después de corregir los ajustes. Un proyecto Worker genera una dirección `*.workers.dev`, no `*.pages.dev`. Ambas opciones pueden usarse sin abono mensual dentro de los límites del plan gratuito.
+
 ## Cloudflare Pages, plan gratuito
 
 Este sitio puede coexistir con MERCA como **otro proyecto Pages**, sin pagar un servidor.
