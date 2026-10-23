@@ -106,7 +106,7 @@ interface PrinterStoreValue {
 const PrinterContext = createContext<PrinterStoreValue | null>(null)
 
 export function PrinterProvider({ children }: { children: React.ReactNode }) {
-  const mode = 'usb' as 'wifi' | 'usb' {
+  const mode = 'usb' as 'wifi' | 'usb'
   const { toast } = useToast()
 
   // Single real transport instance for the app lifetime. Exactly ONE
