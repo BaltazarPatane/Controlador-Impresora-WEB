@@ -1,0 +1,25 @@
+{
+  "name": "Controlador Impresora ARS · USB",
+  "short_name": "Impresora USB",
+  "description": "Control directo de Arduino Mega y Marlin desde Chrome por USB. G-code local, control, consola e impresión SD.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#111318",
+  "theme_color": "#111318",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
