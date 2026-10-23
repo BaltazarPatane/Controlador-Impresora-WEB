@@ -1,0 +1,29 @@
+name: Compilar controlador web
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Pruebas de control y protocolo
+        run: |
+          npm run test:usb
+          npm test
+      - name: Verificar TypeScript
+        run: npm run typecheck
+      - name: Compilar sitio estático
+        run: npm run build
+      - name: Confirmar salida para Cloudflare Pages
+        run: test -f out/index.html
