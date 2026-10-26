@@ -1,8 +1,18 @@
 # Controlador Impresora WEB · ARS
 
-Interfaz **Chrome de escritorio**, basada en la interfaz original **ESP32-C3 v3.4** de la impresora cartesiana de viviendas. Conserva el diseño oscuro, los controles y la barra de navegación, reemplazando **Cámara** por **Programa** y reuniendo las funciones SD en esa misma pestaña.
+Interfaz **Chrome de escritorio**, basada en la interfaz original **ESP32-C3 v3.4** de la impresora cartesiana de viviendas. Conserva el diseño oscuro, los controles y la barra de navegación, con cinco pestañas principales: **Movimiento, Control, Programa, Visualizador y Consola**. La selección y ejecución USB/SD vive en Control.
 
 **Comunicación real**: Chrome ⇄ Web Serial ⇄ USB ⇄ Arduino Mega 2560 ⇄ Marlin 2.1.2.5, a 115200 baudios. No se utiliza Wi-Fi, una ESP32, Cloudflare Functions ni un backend para transmitir los comandos. El sitio alojado en Cloudflare entrega solo los recursos web; los G-code seleccionados permanecen en la computadora local.
+
+## Navegación (v2.2)
+
+- **Movimiento**: control manual XYZ (sin modificaciones).
+- **Control**: homing individual/general y todo el progreso USB/SD (elegir archivo SD, iniciar, pausar, reanudar, cancelar, porcentajes y tiempos).
+- **Programa**: selección, edición y guardado de archivo G-code en la PC. Al pulsar «Guardar cambios» se actualiza la versión cargada.
+- **Visualizador**: trayectoria G-code progresiva o completa en su propia pestaña.
+- **Consola**: permanece sin cambios.
+
+El espacio de Programa/Control/Visualizador permanece montado al navegar, así que se conservan borradores, selección de SD y estado del controlador USB. El botón de parada física sigue siendo indispensable.
 
 ## Ajustes visuales (v2.1)
 
