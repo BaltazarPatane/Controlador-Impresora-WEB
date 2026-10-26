@@ -1,17 +1,25 @@
 # Controlador Impresora WEB · ARS
 
-Interfaz **Chrome de escritorio**, basada en la interfaz original **ESP32-C3 v3.4** de la impresora cartesiana de viviendas. Conserva el diseño oscuro, los controles y la barra de navegación, reemplazando la pestaña **Cámara** por **Programa**.
+Interfaz **Chrome de escritorio**, basada en la interfaz original **ESP32-C3 v3.4** de la impresora cartesiana de viviendas. Conserva el diseño oscuro, los controles y la barra de navegación, reemplazando **Cámara** por **Programa** y reuniendo las funciones SD en esa misma pestaña.
 
 **Comunicación real**: Chrome ⇄ Web Serial ⇄ USB ⇄ Arduino Mega 2560 ⇄ Marlin 2.1.2.5, a 115200 baudios. No se utiliza Wi-Fi, una ESP32, Cloudflare Functions ni un backend para transmitir los comandos. El sitio alojado en Cloudflare entrega solo los recursos web; los G-code seleccionados permanecen en la computadora local.
 
 ## Funciones
 
-- **Movimiento**: ejes X, Y, Z, pasos, posición real `M114` y bloqueos durante programas.
-- **Control**: homing G28, cola de movimientos, pausa y reanudación.
-- **Programa**: seleccionar G-code del equipo, inspeccionar, iniciar, pausar, reanudar, cancelar, progreso sobre comandos confirmados y tiempo transcurrido.
-- **Impresión**: supervisión de SD de Marlin (`M27`, `M27 C`, `M31`). El tiempo restante de SD solo aparece si Marlin ofrece un dato real (esta configuración no lo ofrece).
-- **Consola**: G-code manual, respuestas de Marlin, historial y registros.
-- **Parada de emergencia de 1 segundo**: envía `M112` fuera de la cola de comandos, siempre **dependiente del enlace USB**. No reemplaza al pulsador físico de emergencia.
+- **Movimiento**: desplazamientos manuales X, Y y Z; homing; posiciones reales `M114`, con bloqueo cuando hay un trabajo activo.
+- **Control**: estado de máquina, pausa/reanudación y paradas según las protecciones existentes.
+- **Programa**, dividido en tres solapas:
+  - **Cargar archivo**: abre G-code local de hasta 20 MB, editor de texto completo, botón **Guardar cambios** (valida y recarga automáticamente) y **Guardar en mi PC** (descarga la copia editada).
+  - **Progreso**: alterna archivos de la computadora y de la SD de Marlin. Archivo local por USB con confirmaciones `ok`, pausa, reanudación, cancelación y progreso de comandos aceptados. En SD, `M20` para listar, `M23` para seleccionar con confirmación real de apertura, `M24` para iniciar y reanudar, `M25` para pausar, `M524` para cancelar, `M27` para bytes procesados, `M27 C` para nombre y `M31` para tiempo transcurrido. La interfaz nunca inventa tiempo restante.
+  - **Visualizador**: traza informativa XYZ a partir del G-code abierto, con G0/G1/G2/G3 (arcos XY), unidades G20/G21, movimientos absolutos/relativos G90/G91 y cambios G92. Vista isométrica o superior, zoom, rotación, modos ejecución y diseño final. Distingue trayectorias rápidas, segmentos confirmados y futuros; no simula el volumen real de material. Con SD requiere abrir una **copia local del mismo archivo** para representar su geometría y el progreso por bytes es orientativo.
+- **Consola**: comandos manuales y respuestas de Marlin.
+- **Parada de emergencia de un segundo**, independiente de la pestaña, que envía `M112` fuera de la cola. **No reemplaza el pulsador de emergencia cableado**.
+
+### Importante para la seguridad
+
+No se permite iniciar simultáneamente un archivo SD y un archivo transmitido por USB desde la interfaz. Una `ok` de Marlin confirma recepción/procesamiento del comando, no necesariamente movimiento físico finalizado. Las pausas/cancelaciones esperan las confirmaciones del protocolo; en ningún caso deben sustituir una parada física ante peligros. El navegador debe permanecer abierto mientras transmite un programa por USB.
+
+La SD no dispone de transmisión inversa del archivo por comandos `M20` / `M27`; por eso el visualizador solo analiza G-code abierto desde el equipo, no inventa un modelo remoto. Tampoco incluye simulación de extrusión o compensaciones de máquina. Para dibujos exactos conviene consultar primero el resultado real de la impresora y las modificaciones Marlin personalizadas.
 
 ## Desarrollo local
 
