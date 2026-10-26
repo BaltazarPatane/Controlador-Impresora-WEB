@@ -7,14 +7,14 @@ const root = path.join(__dirname, '..')
 const read = (p) => fs.readFileSync(path.join(root, 'components', p), 'utf8')
 
 test('La interfaz principal no muestra encabezado superior', () => {
-  assert.doesNotMatch(read('printer-app.tsx'), /<AppHeader\\s*\\/?\\s*>/)
+  assert.doesNotMatch(read('printer-app.tsx'), /<AppHeader\s*\/?\s*>/)
 })
 
 test('La emergencia conserva la pulsacion de un segundo cuando la Mega esta conectada', () => {
   const content = read('emergency-stop.tsx')
-  assert.match(content, /if \\(connection !== 'connected'\\)/)
+  assert.match(content, /if \(connection !== 'connected'\)/)
   assert.match(content, /Mantener presionado 1 segundo/)
-  assert.match(content, /hold\\.current\\?\\.begin\\(\\)/)
+  assert.match(content, /hold\.current\?\.begin\(\)/)
   assert.match(content, /emergencyStopActive/)
 })
 
@@ -23,7 +23,7 @@ test('Ante una desconexion muestra estado y permite conectar USB', () => {
   assert.match(content, /Impresora desconectada/)
   assert.match(content, /Error de conexión/)
   assert.match(content, /Conectar USB/)
-  assert.match(content, /connectPrinter\\(\\)/)
+  assert.match(content, /connectPrinter\(\)/)
 })
 
 test('Elimina notas extensas sin desactivar la seguridad real', () => {
@@ -34,7 +34,7 @@ test('Elimina notas extensas sin desactivar la seguridad real', () => {
     assert.doesNotMatch(src, /La visualización es informativa/)
     assert.doesNotMatch(src, /No cierres la página ni desconectes el USB/)
   }
-  assert.match(read('programa-screen.tsx'), /<EmergencyStop compact\\s*\\/>/)
+  assert.match(read('programa-screen.tsx'), /<EmergencyStop compact\s*\/>/)
 })
 
 test('No duplica el aviso de desconexion en ninguna de las cuatro pestañas', () => {
