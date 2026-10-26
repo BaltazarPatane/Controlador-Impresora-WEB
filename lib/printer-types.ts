@@ -37,6 +37,8 @@ export interface Position {
 }
 
 export type MessageDirection = 'TX' | 'RX' | 'SYS' | 'ERR'
+export type ConsoleOrigin = 'startup' | 'operator' | 'internal' | 'file'
+export type ConsoleMode = 'normal' | 'diagnostic'
 
 /**
  * Controlled-pause state machine (host-side, Pronterface-like). It is driven by
@@ -95,6 +97,8 @@ export interface SendMeta {
   jobTag?: JobTag
   /** Controller-assigned id to correlate the eventual `ok` with a file line. */
   ackId?: number
+  /** Origin affects the console display only. */
+  consoleOrigin?: ConsoleOrigin
 }
 
 /**
@@ -204,6 +208,8 @@ export interface ConsoleEntry {
   timestamp: string
   direction: MessageDirection
   content: string
+  origin?: ConsoleOrigin
+  visibleInNormal?: boolean
 }
 
 /**
