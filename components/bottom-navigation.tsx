@@ -1,14 +1,15 @@
 'use client'
 
-import { Crosshair, Move, FileCode2, TerminalSquare } from 'lucide-react'
+import { Crosshair, Move, FileCode2, Orbit, TerminalSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export type TabId = 'movimiento' | 'control' | 'programa' | 'consola'
+export type TabId = 'movimiento' | 'control' | 'programa' | 'visualizador' | 'consola'
 
 const TABS: { id: TabId; label: string; icon: typeof Move }[] = [
   { id: 'movimiento', label: 'Movimiento', icon: Move },
   { id: 'control', label: 'Control', icon: Crosshair },
   { id: 'programa', label: 'Programa', icon: FileCode2 },
+  { id: 'visualizador', label: 'Visualizador', icon: Orbit },
   { id: 'consola', label: 'Consola', icon: TerminalSquare },
 ]
 
