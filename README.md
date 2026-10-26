@@ -7,12 +7,19 @@ Interfaz **Chrome de escritorio**, basada en la interfaz original **ESP32-C3 v3.
 ## Navegación (v2.2)
 
 - **Movimiento**: control manual XYZ (sin modificaciones).
-- **Control**: homing individual/general y todo el progreso USB/SD (elegir archivo SD, iniciar, pausar, reanudar, cancelar, porcentajes y tiempos).
+- **Control**: todo el progreso USB/SD (elegir archivo SD, iniciar, pausar, reanudar, cancelar, porcentajes y tiempos).
 - **Programa**: selección, edición y guardado de archivo G-code en la PC. Al pulsar «Guardar cambios» se actualiza la versión cargada.
 - **Visualizador**: trayectoria G-code progresiva o completa en su propia pestaña.
 - **Consola**: permanece sin cambios.
 
 El espacio de Programa/Control/Visualizador permanece montado al navegar, así que se conservan borradores, selección de SD y estado del controlador USB. El botón de parada física sigue siendo indispensable.
+
+## Reorganización de Movimiento (v2.3)
+
+- Las posiciones X/Y/Z permanecen arriba y los pasos de movimiento debajo.
+- A la derecha del control Z hay cuatro botones de home: general, X, Y y Z.
+- La pestaña Control conserva exclusivamente las funciones de progreso y ejecución USB/SD.
+- Los comandos de Marlin, la seguridad USB y la parada de emergencia de 1 segundo no se modificaron.
 
 ## Ajustes visuales (v2.1)
 
@@ -23,7 +30,7 @@ El espacio de Programa/Control/Visualizador permanece montado al navegar, así q
 
 ## Funciones
 
-- **Movimiento**: desplazamientos manuales X, Y y Z; homing; posiciones reales `M114`, con bloqueo cuando hay un trabajo activo.
+- **Movimiento**: desplazamientos manuales X, Y y Z y homing general/individual (columna derecha); homing; posiciones reales `M114`, con bloqueo cuando hay un trabajo activo.
 - **Control**: estado de máquina, pausa/reanudación y paradas según las protecciones existentes.
 - **Programa**, dividido en tres solapas:
   - **Cargar archivo**: abre G-code local de hasta 20 MB, editor de texto completo, botón **Guardar cambios** (valida y recarga automáticamente) y **Guardar en mi PC** (descarga la copia editada).
