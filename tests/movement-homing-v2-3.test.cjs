@@ -46,9 +46,11 @@ test('Z y Homing ganan ancho frente al control XY', () => {
   assert.match(read('movement-homing.tsx'), /min-h-\[52px\]/)
 })
 
-test('Movimiento usa el ancho completo mientras las otras pestañas conservan su límite', () => {
+test('Movimiento conserva el mismo margen exterior que las demás pestañas', () => {
   const app = read('printer-app.tsx')
-  assert.match(app, /tab === 'movimiento'/)
-  assert.match(app, /max-w-none flex-col px-4 py-3/)
-  assert.match(app, /max-w-5xl flex-col px-4 py-3/)
+  assert.match(app, /mx-auto flex h-full w-full max-w-5xl flex-col px-4 py-3/)
+  assert.doesNotMatch(app, /max-w-none flex-col px-4 py-3/)
+  // El espacio se distribuye DENTRO de la grilla sin estirar toda la pantalla.
+  const movement = read('movimiento-screen.tsx')
+  assert.ok(movement.includes('grid-cols-[minmax(0,1fr)_clamp(5.2rem,16vw,11rem)_clamp(5.2rem,16vw,11rem)]'))
 })
