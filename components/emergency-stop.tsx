@@ -1,6 +1,6 @@
 'use client'
 
-import { Cable, CableX, LoaderCircle, OctagonAlert, RotateCcw } from 'lucide-react'
+import { Cable, LoaderCircle, OctagonAlert, RotateCcw } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { HoldToConfirm } from '@/lib/hold-to-confirm'
 import { usePrinter } from '@/lib/printer-store'
@@ -73,7 +73,7 @@ export function EmergencyStop({
       >
         <div className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground', hasError && 'text-warning')}>
           {pending ? <LoaderCircle className="size-5 animate-spin" aria-hidden="true" /> :
-            hasError || unsupported ? <CableX className="size-5" aria-hidden="true" /> :
+            hasError || unsupported ? <Cable className="size-5" aria-hidden="true" /> :
               <Cable className="size-5" aria-hidden="true" />}
         </div>
         <div className="min-w-0 flex-1">
