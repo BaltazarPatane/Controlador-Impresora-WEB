@@ -43,7 +43,7 @@ export function MovementHoming({ className }: { className?: string }) {
               aria-label={accessible}
               title={accessible}
               className={cn(
-                'flex min-h-[44px] min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl border font-semibold transition-colors',
+                'flex min-h-[52px] min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl border font-semibold transition-colors',
                 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
                 'active:translate-y-px disabled:pointer-events-none disabled:opacity-40',
                 target === 'all'
