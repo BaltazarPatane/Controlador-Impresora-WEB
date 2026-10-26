@@ -1,0 +1,35 @@
+const test = require('node:test')
+const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const path = require('node:path')
+const root = path.join(__dirname, '..', 'components')
+const read = (f) => fs.readFileSync(path.join(root, f), 'utf8')
+
+test('Navegación de cinco pestañas independientes', () => {
+ const nav=read('bottom-navigation.tsx')
+ for(const id of ['movimiento','control','programa','visualizador','consola']) assert.match(nav, new RegExp(`id: '${id}'`))
+ assert.doesNotMatch(nav, /id: 'impresion'/)
+})
+test('No existen solapas internas Progreso ni Cargar archivo',()=>{
+ const src=read('programa-screen.tsx')
+ assert.doesNotMatch(src, /role="tablist"|tabOptions|setSection/)
+ assert.match(src, /view==='file'/)
+ assert.match(src, /view==='progress'/)
+ assert.match(src, /view==='visualizer'/)
+})
+test('Control integra homing y los controles del programa SD y PC',()=>{
+ const src=read('programa-screen.tsx')
+ assert.match(src, /<HomingControls \/>/)
+ for (const action of ['startProgram','startSdProgram','pauseProgram','pauseSdProgram','resumeProgram','resumeSdProgram','cancelProgram','cancelSdProgram']) assert.match(src,new RegExp(action))
+})
+test('El espacio del programa persiste al navegar',()=>{
+ const app=read('printer-app.tsx')
+ assert.match(app,/workspaceVisible/)
+ assert.match(app,/<ProgramaScreen view=\{view\} \/>/)
+ assert.doesNotMatch(app,/<ControlScreen/)
+})
+test('Conserva botón de emergencia en vistas de trabajo',()=>{
+ assert.match(read('programa-screen.tsx'),/<EmergencyStop compact\s*\/>/)
+ assert.match(read('emergency-stop.tsx'),/Mantener presionado 1 segundo/)
+ assert.doesNotMatch(read('emergency-stop.tsx'),/CableX/)
+})
