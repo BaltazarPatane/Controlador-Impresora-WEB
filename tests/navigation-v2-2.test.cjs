@@ -17,9 +17,9 @@ test('No existen solapas internas Progreso ni Cargar archivo',()=>{
  assert.match(src, /view==='progress'/)
  assert.match(src, /view==='visualizer'/)
 })
-test('Control integra homing y los controles del programa SD y PC',()=>{
+test('Control mantiene los controles del programa SD y PC sin homing',()=>{
  const src=read('programa-screen.tsx')
- assert.match(src, /<HomingControls \/>/)
+ assert.doesNotMatch(src, /HomingControls/)
  for (const action of ['startProgram','startSdProgram','pauseProgram','pauseSdProgram','resumeProgram','resumeSdProgram','cancelProgram','cancelSdProgram']) assert.match(src,new RegExp(action))
 })
 test('El espacio del programa persiste al navegar',()=>{
