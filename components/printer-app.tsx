@@ -23,7 +23,9 @@ function AppShell() {
   return (
     <div className="flex h-[100dvh] flex-col bg-background">
       <main className="min-h-0 flex-1 overflow-hidden">
-        <div className="mx-auto flex h-full w-full max-w-5xl flex-col px-4 py-3">
+        <div className={tab === 'movimiento'
+          ? 'mx-auto flex h-full w-full max-w-none flex-col px-4 py-3'
+          : 'mx-auto flex h-full w-full max-w-5xl flex-col px-4 py-3'}>
           {tab === 'movimiento' && <MovimientoScreen />}
           {/* Mount once: switching views never discards unsaved edits or the selected SD file. */}
           <div className={workspaceVisible ? 'flex h-full min-h-0 flex-col' : 'hidden'}>
