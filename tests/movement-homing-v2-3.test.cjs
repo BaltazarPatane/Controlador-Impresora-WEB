@@ -32,3 +32,16 @@ test('Parada de emergencia conserva confirmación de un segundo', () => {
   assert.match(read('movimiento-screen.tsx'), /<EmergencyStop compact\s*\/>/)
   assert.match(read('emergency-stop.tsx'), /Mantener presionado 1 segundo/)
 })
+
+test('El panel Z conserva ambos desplazamientos sin duplicar la lectura de posición', () => {
+  const z = read('z-jog-control.tsx')
+  assert.match(z, /jog\('z', 1\)/)
+  assert.match(z, /jog\('z', -1\)/)
+  assert.doesNotMatch(z, /formatMm|position\.z/)
+})
+
+test('Z y Homing ganan ancho frente al control XY', () => {
+  const movement = read('movimiento-screen.tsx')
+  assert.match(movement, /grid-cols-\[minmax\(0,0\.86fr\)_clamp\(5\.2rem,18vw,7\.2rem\)_clamp\(5\.2rem,18vw,7\.2rem\)\]/)
+  assert.match(read('movement-homing.tsx'), /min-h-\[52px\]/)
+})
