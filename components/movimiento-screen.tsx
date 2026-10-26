@@ -5,7 +5,6 @@ import { StepSelector } from '@/components/step-selector'
 import { XyJogControl } from '@/components/xy-jog-control'
 import { ZJogControl } from '@/components/z-jog-control'
 import { EmergencyStop } from '@/components/emergency-stop'
-import { DisconnectedNotice } from '@/components/disconnected-notice'
 
 /**
  * Movimiento tab — exclusively manual axis movement. A fixed-height flex column
@@ -17,7 +16,6 @@ import { DisconnectedNotice } from '@/components/disconnected-notice'
 export function MovimientoScreen() {
   return (
     <div className="flex h-full flex-col gap-3">
-      <DisconnectedNotice />
       <PositionDisplay compact />
       <StepSelector />
       <div className="grid min-h-0 flex-1 grid-cols-[1fr_5.5rem] gap-3">
