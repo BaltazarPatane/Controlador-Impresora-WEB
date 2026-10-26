@@ -62,7 +62,7 @@ export function XyJogControl({ className }: { className?: string }) {
       >
         Movimiento XY
       </h2>
-      <div className="grid flex-1 grid-cols-3 grid-rows-3 gap-2 rounded-2xl border border-border bg-panel p-2.5">
+      <div className="grid min-h-0 flex-1 grid-cols-3 grid-rows-3 gap-1 sm:gap-2 rounded-2xl border border-border bg-panel p-1.5 sm:p-2.5">
         <div aria-hidden="true" />
         <JogButton
           onClick={move('y', 1)}
