@@ -2,11 +2,10 @@
 
 import { ArrowUp, ArrowDown } from 'lucide-react'
 import { usePrinter } from '@/lib/printer-store'
-import { formatMm } from '@/lib/printer-types'
 import { cn } from '@/lib/utils'
 
 export function ZJogControl({ className }: { className?: string }) {
-  const { jog, canOperate, position, busyAction } = usePrinter()
+  const { jog, canOperate, busyAction } = usePrinter()
   const disabled = !canOperate
 
   const btn =
@@ -20,7 +19,7 @@ export function ZJogControl({ className }: { className?: string }) {
       >
         Movimiento Z
       </h2>
-      <div className="flex flex-1 flex-col gap-2 rounded-2xl border border-border bg-panel p-2.5">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 rounded-2xl border border-border bg-panel p-2.5">
         <button
           type="button"
           onClick={() => void jog('z', 1)}
@@ -31,21 +30,6 @@ export function ZJogControl({ className }: { className?: string }) {
           <ArrowUp className="size-5" aria-hidden="true" />
           <span className="font-mono text-sm">Z+</span>
         </button>
-
-        <div className="flex flex-col items-center rounded-xl border border-dashed border-border/70 py-1.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-            Z
-          </span>
-          <span
-            className={cn(
-              'font-mono text-base font-semibold tabular-nums',
-              position.z === null && 'text-muted-foreground',
-            )}
-          >
-            {formatMm(position.z)}
-            <span className="ml-1 text-xs font-medium text-muted-foreground">mm</span>
-          </span>
-        </div>
 
         <button
           type="button"
