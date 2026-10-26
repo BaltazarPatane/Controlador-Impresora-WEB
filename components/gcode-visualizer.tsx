@@ -42,7 +42,8 @@ function paint(canvas: HTMLCanvasElement, path: Toolpath, ratio: number, mode: M
   const done=Math.floor(path.commands*ratio)
   ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=1.45
   // One pass over paths. Avoid line batching across gaps (would create false segments).
-  for(let i=0;i<count;i++){
+  const stride=Math.max(1,Math.ceil(count/40000))
+  for(let i=0;i<count;i+=stride){
     const seg=path.segments[i]
     if(seg.rapid && !showRapids)continue
     const executed=mode==='final'||seg.commandIndex<done
@@ -87,8 +88,23 @@ export function GcodeVisualizer({ content, progress, source, active }: { content
   const draw=useCallback(()=>{
     if(drawing&&canvasRef.current)paint(canvasRef.current,drawing,Math.max(0,Math.min(1,progress/100)),mode,view,yaw,zoom,showRapids)
   },[drawing,progress,mode,view,yaw,zoom,showRapids])
-  useEffect(()=>{draw()},[draw])
-  useEffect(()=>{if(!canvasRef.current)return;const ro=new ResizeObserver(()=>draw());ro.observe(canvasRef.current);return()=>ro.disconnect()},[draw])
+  // The streaming controller may receive dozens of acknowledgements a second.
+  // Throttle canvas redraws without delaying any USB commands on the main thread.
+  const latestDraw=useRef(draw)
+  latestDraw.current=draw
+  const repaintTimer=useRef<ReturnType<typeof setTimeout>|null>(null)
+  const lastPaint=useRef(0)
+  useEffect(()=>{
+    if(repaintTimer.current!==null)return
+    const delay=Math.max(0,220-(performance.now()-lastPaint.current))
+    repaintTimer.current=setTimeout(()=>{
+      repaintTimer.current=null
+      lastPaint.current=performance.now()
+      latestDraw.current()
+    },delay)
+  },[draw])
+  useEffect(()=>()=>{if(repaintTimer.current!==null)clearTimeout(repaintTimer.current)},[])
+  useEffect(()=>{if(!canvasRef.current)return;const ro=new ResizeObserver(()=>latestDraw.current());ro.observe(canvasRef.current);return()=>ro.disconnect()},[drawing])
   useEffect(()=>{if(active)setMode('live')},[active])
   const reset=()=>{setYaw(Math.PI/4);setZoom(1);setView('iso')}
   return <section className="flex min-h-0 flex-1 flex-col gap-3">
@@ -115,6 +131,7 @@ export function GcodeVisualizer({ content, progress, source, active }: { content
         <button onClick={()=>setZoom(v=>Math.min(5,v*1.2))} title="Acercar" className="rounded-lg border border-border p-2"><ZoomIn className="size-4"/></button>
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{(['x','y','z'] as const).map(axis=><div key={axis} className="rounded-lg border border-border bg-background/60 px-3 py-2"><p className="text-xs text-muted-foreground">Eje {axis.toUpperCase()}</p><p className="text-sm font-semibold tabular-nums">{format(drawing.bounds.max[axis]-drawing.bounds.min[axis])} mm</p></div>)}<div className="rounded-lg border border-border bg-background/60 px-3 py-2"><p className="text-xs text-muted-foreground">Avance en vista</p><p className="text-sm font-semibold">{mode==='final'?'Completo':`${progress.toFixed(1)} %`}</p></div></div>
+      {drawing.segments.length>40000&&<p className="text-xs text-warning">Para conservar fluidez en archivos grandes se simplifica el dibujo a una muestra de hasta 40.000 segmentos; el archivo transmitido a Marlin no se modifica.</p>}
       {drawing.warnings.map(w=><p key={w} className="text-xs text-warning">{w}</p>)}
       {source==='sd'&&active&&<p className="text-xs text-warning">En SD, el trazado progresivo es una referencia proporcional a bytes procesados, no una posición de herramienta confirmada. Para que corresponda al diseño, abrí una copia local del mismo archivo SD.</p>}
       <p className="flex items-start gap-2 text-xs text-muted-foreground"><Scan className="size-4 shrink-0"/>La visualización es informativa. Homing, correcciones geométricas de Marlin, electroválvulas y movimientos internos pueden modificar el recorrido real. El indicador USB avanza al recibir «ok», no cuando termina físicamente cada movimiento.</p>
