@@ -1,6 +1,6 @@
 'use client'
 
-import { OctagonAlert } from 'lucide-react'
+import { Cable, CableX, LoaderCircle, OctagonAlert, RotateCcw } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { HoldToConfirm } from '@/lib/hold-to-confirm'
 import { usePrinter } from '@/lib/printer-store'
@@ -19,7 +19,7 @@ export function EmergencyStop({
   className?: string
   compact?: boolean
 }) {
-  const { emergencyStop, emergencyStopActive } = usePrinter()
+  const { emergencyStop, emergencyStopActive, connection, connectPrinter, webSerialSupported } = usePrinter()
   const titleId = useId()
   const [progress, setProgress] = useState(0)
   const action = useRef(emergencyStop)
@@ -38,7 +38,64 @@ export function EmergencyStop({
       hold.current?.cancel()
     }
   }, [])
-  useEffect(() => { if (emergencyStopActive) cancel() }, [emergencyStopActive])
+  useEffect(() => { if (emergencyStopActive || connection !== 'connected') cancel() }, [emergencyStopActive, connection])
+
+  // With no confirmed Marlin connection, M112 cannot be delivered reliably.
+  // Replace the emergency control with an actionable connection status instead
+  // of displaying an emergency button that cannot actually protect the machine.
+  if (connection !== 'connected') {
+    const pending = connection === 'connecting' || connection === 'waiting-marlin'
+    const hasError = connection === 'error'
+    const unsupported = !webSerialSupported
+    const heading = unsupported
+      ? 'USB no disponible'
+      : hasError
+        ? 'Error de conexión'
+        : pending
+          ? 'Conectando con la Mega…'
+          : 'Impresora desconectada'
+    const detail = unsupported
+      ? 'Abrí la aplicación en Chrome de escritorio.'
+      : hasError
+        ? 'Revisá el cable USB y cerrá Pronterface.'
+        : pending
+          ? 'Esperando la respuesta de Marlin.'
+          : 'Conectá la Mega por USB para habilitar los controles.'
+
+    return (
+      <div
+        role={hasError ? 'alert' : 'status'}
+        className={cn(
+          'flex min-h-12 w-full items-center gap-3 rounded-xl border border-border bg-panel px-3 py-2.5',
+          hasError && 'border-warning/40 bg-warning/5',
+          className,
+        )}
+      >
+        <div className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted/60 text-muted-foreground', hasError && 'text-warning')}>
+          {pending ? <LoaderCircle className="size-5 animate-spin" aria-hidden="true" /> :
+            hasError || unsupported ? <CableX className="size-5" aria-hidden="true" /> :
+              <Cable className="size-5" aria-hidden="true" />}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className={cn('text-sm font-semibold', hasError && 'text-warning')}>{heading}</p>
+          <p className="text-[11px] leading-snug text-muted-foreground">{detail}</p>
+          {emergencyStopActive && <p className="mt-1 text-[11px] text-danger">Parada anterior registrada: verificá el estado físico antes de operar.</p>}
+        </div>
+        {!unsupported && (
+          <button
+            type="button"
+            onClick={() => { void connectPrinter() }}
+            disabled={pending}
+            className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-background px-3 text-xs font-semibold transition-colors hover:border-primary/50 hover:text-primary disabled:cursor-wait disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            aria-label={hasError ? 'Reintentar conexión USB' : 'Conectar la Arduino Mega por USB'}
+          >
+            {hasError && <RotateCcw className="size-3.5" aria-hidden="true" />}
+            {pending ? 'Conectando…' : hasError ? 'Reintentar' : 'Conectar USB'}
+          </button>
+        )}
+      </div>
+    )
+  }
 
   return (
     <section className={cn('space-y-2', className)} aria-labelledby={titleId}>
