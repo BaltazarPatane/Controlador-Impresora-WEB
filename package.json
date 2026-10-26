@@ -10,7 +10,8 @@
     "prebuild": "node -e \"require('fs').rmSync('out', {recursive: true, force: true})\"",
     "test": "node --import tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "test:usb": "node --test tests/protocol-usb.test.cjs"
+    "test:usb": "node --test tests/protocol-usb.test.cjs",
+    "test:console": "node --experimental-strip-types --test tests/console-filter.test.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
