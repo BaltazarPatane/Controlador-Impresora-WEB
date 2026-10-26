@@ -19,6 +19,7 @@ import {
   useState,
 } from 'react'
 import { useToast } from '@/components/toaster'
+import { normalConsoleEntry } from './console-log-policy'
 import { parseSdDetail, type SdPrintDetails } from '@/lib/sd-print-report'
 import { parseSdListLine, isSdListBegin, isSdListEnd, isSdFileOpened, isSdFileOpenFailed, type SdFile } from '@/lib/sd-card'
 import {
@@ -33,6 +34,7 @@ import {
   uid,
   type Axis,
   type ConsoleEntry,
+  type ConsoleMode,
   type MachineState,
   type MessageDirection,
   type PauseState,
@@ -44,7 +46,8 @@ import {
 } from './printer-types'
 
 // Preserve at least the latest 200 entries (spec). We keep a bit more headroom.
-const MAX_ENTRIES = 300
+const MAX_NORMAL_ENTRIES = 500
+const MAX_DIAGNOSTIC_ENTRIES = 1500
 
 type HomeTarget = Axis | 'all'
 
@@ -88,6 +91,9 @@ interface PrinterStoreValue {
   canOperate: boolean
   busyAction: string | null
   console: ConsoleEntry[]
+  diagnosticConsole: ConsoleEntry[]
+  consoleMode: ConsoleMode
+  setConsoleMode: (mode: ConsoleMode) => void
   commandHistory: string[]
   // Controlled-pause state, driven only by real Marlin acknowledgements.
   pauseState: PauseState
@@ -150,6 +156,19 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
   const [emergencyStopActive, setEmergencyStopActive] = useState(false)
   const [busyAction, setBusyAction] = useState<string | null>(null)
   const [consoleEntries, setConsoleEntries] = useState<ConsoleEntry[]>([])
+  const [diagnosticConsole, setDiagnosticConsole] = useState<ConsoleEntry[]>([])
+  const [consoleMode, setConsoleModeState] = useState<ConsoleMode>('normal')
+  const consoleModeRef = useRef<ConsoleMode>('normal')
+  const diagnosticBufferRef = useRef<ConsoleEntry[]>([])
+  const diagnosticFlushRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const setConsoleMode = useCallback((mode: ConsoleMode) => {
+    consoleModeRef.current = mode
+    setConsoleModeState(mode)
+    if (mode === 'diagnostic') setDiagnosticConsole([...diagnosticBufferRef.current])
+  }, [])
+  useEffect(() => () => {
+    if (diagnosticFlushRef.current !== null) clearTimeout(diagnosticFlushRef.current)
+  }, [])
   const [commandHistory, setCommandHistory] = useState<string[]>([])
   const [pauseState, setPauseState] = useState<PauseState>('running')
   const [pendingMovementCount, setPendingMovementCount] = useState(0)
@@ -190,18 +209,50 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
   sdBusyRef.current = sdBusy
   const canOperate = connection === 'connected' && !emergencyStopActive && pauseState === 'running' && !sdPrint.active && !sdPrint.paused && !jobController.active
 
+  // Separate bounded histories. File traffic never evicts startup or operator logs.
+  // Diagnostic is batched to avoid React updates per line during file streaming.
+  const recordConsoleEntry = useCallback((entry: ConsoleEntry) => {
+    const buffer = diagnosticBufferRef.current
+    buffer.push(entry)
+    if (buffer.length > MAX_DIAGNOSTIC_ENTRIES) buffer.splice(0, buffer.length - MAX_DIAGNOSTIC_ENTRIES)
+    if (consoleModeRef.current === 'diagnostic' && diagnosticFlushRef.current === null) {
+      diagnosticFlushRef.current = setTimeout(() => {
+        diagnosticFlushRef.current = null
+        setDiagnosticConsole([...diagnosticBufferRef.current])
+      }, 150)
+    }
+    if (normalConsoleEntry(entry)) {
+      setConsoleEntries(prev => [...prev.slice(-(MAX_NORMAL_ENTRIES - 1)), entry])
+    }
+  }, [])
+
   const appendEntry = useCallback(
     (direction: MessageDirection, content: string) => {
-      setConsoleEntries((prev) => {
-        const next = [
-          ...prev,
-          { id: uid(), timestamp: formatTimestamp(), direction, content },
-        ]
-        return next.length > MAX_ENTRIES ? next.slice(-MAX_ENTRIES) : next
-      })
+      recordConsoleEntry({ id: uid(), timestamp: formatTimestamp(), direction, content,
+        origin: 'internal', visibleInNormal: true })
     },
-    [],
+    [recordConsoleEntry],
   )
+
+  const lastJobState = useRef(job.state)
+  useEffect(() => {
+    if (lastJobState.current === job.state) return
+    lastJobState.current = job.state
+    const event: Partial<Record<typeof job.state, string>> = {
+      starting: 'Iniciando programa',
+      printing: 'Programa en ejecución',
+      paused: 'Programa pausado',
+      resuming: 'Reanudando programa',
+      cancelling: 'Cancelación solicitada',
+      cancelled: 'Programa cancelado',
+      completed: 'Programa finalizado',
+      interrupted: 'Programa interrumpido',
+      error: 'Error en el programa',
+    }
+    const label = event[job.state]
+    if (label) appendEntry(job.state === 'interrupted' || job.state === 'error' ? 'ERR' : 'SYS',
+      `${label}${job.fileName ? ': ' + job.fileName : ''}${job.error ? ' · ' + job.error : ''}`)
+  }, [job.state, job.fileName, job.error, appendEntry])
 
   // Subscribe to transport messages once. Only real messages mutate state.
   useEffect(() => {
@@ -248,10 +299,7 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
             if (parsed) setSdDetails(current => ({ ...current, ...parsed }))
           }
           if (message.entry.direction === 'RX' && message.entry.content.trim() === 'start') resetSeen.current = true
-          setConsoleEntries((prev) => {
-            const next = [...prev, message.entry]
-            return next.length > MAX_ENTRIES ? next.slice(-MAX_ENTRIES) : next
-          })
+          recordConsoleEntry(message.entry)
           break
         case 'position':
           setPosition(message.position)
@@ -319,7 +367,7 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
       }
     })
     return unsubscribe
-  }, [transport, mode, jobController])
+  }, [transport, mode, jobController, recordConsoleEntry])
 
   // Once every pre-pause movement has been acknowledged but M400 has not yet
   // returned its `ok`, we are physically finishing motion — not paused yet.
@@ -344,8 +392,8 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
     transport.setOnReady(() => {
       if (mode === 'usb') {
         sdKnownRef.current = false
-        void transport.sendCommand('M27').catch(() => {})
-        void transport.sendCommand('M114').catch(() => {
+        void transport.sendCommand('M27', { consoleOrigin: 'internal' }).catch(() => {})
+        void transport.sendCommand('M114', { consoleOrigin: 'internal' }).catch(() => {
         // If the socket dropped between open and send, reconnect handles it.
         })
       }
@@ -371,7 +419,7 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (connection !== 'connected') return
     const timer = window.setInterval(() => {
-      if (!jobController.active && transport.isIdle()) void transport.sendCommand('M27').catch(() => {})
+      if (!jobController.active && transport.isIdle()) void transport.sendCommand('M27', { consoleOrigin: 'internal' }).catch(() => {})
     }, 5000)
     return () => window.clearInterval(timer)
   }, [connection, transport, jobController])
@@ -646,8 +694,8 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
     try {
       // M27 C reports the current SD filename; M31 reports the actual elapsed timer.
       // No G-code files are transferred to the C3 from the application.
-      await transport.sendCommand('M27 C')
-      await transport.sendCommand('M31')
+      await transport.sendCommand('M27 C', { consoleOrigin: 'internal' })
+      await transport.sendCommand('M31', { consoleOrigin: 'internal' })
     } catch {
       // A lost connection is handled by the shared transport; never fabricate values.
     }
@@ -700,7 +748,7 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
       await transport.sendTracked('M24')
       setSdDetails({ filename: name, elapsedSeconds: null })
       // The next real M27 report will establish the active byte counters.
-      await transport.sendTracked('M27')
+      await transport.sendTracked('M27', { consoleOrigin: 'internal' })
     } catch(e) {
       setSdError(e instanceof Error ? e.message : 'No se pudo iniciar el archivo SD.')
     } finally { sdOpenRef.current = null; setSdBusy(false) }
@@ -737,12 +785,16 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
       await transport.sendTracked('M524')
       // Abort is asynchronous inside Marlin. Never report completion until
       // M27 actually confirms that SD printing has stopped.
-      await transport.sendTracked('M27')
+      await transport.sendTracked('M27', { consoleOrigin: 'internal' })
     } catch(e){setSdError(e instanceof Error?e.message:'No se pudo cancelar la impresión SD.')}
     finally{setSdBusy(false)}
   },[sdBusy,ensureSdReady,transport])
 
-  const clearConsole = useCallback(() => setConsoleEntries([]), [])
+  const clearConsole = useCallback(() => {
+    diagnosticBufferRef.current = []
+    setConsoleEntries([])
+    setDiagnosticConsole([])
+  }, [])
 
   const value = useMemo<PrinterStoreValue>(
     () => ({
@@ -762,6 +814,7 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
       canOperate,
       busyAction,
       console: consoleEntries,
+      diagnosticConsole, consoleMode, setConsoleMode,
       commandHistory,
       pauseState,
       pendingMovementCount,
@@ -790,6 +843,7 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
       canOperate,
       busyAction,
       consoleEntries,
+      diagnosticConsole, consoleMode, setConsoleMode,
       commandHistory,
       pauseState,
       pendingMovementCount,
