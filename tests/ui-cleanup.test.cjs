@@ -38,7 +38,7 @@ test('Elimina notas extensas sin desactivar la seguridad real', () => {
 })
 
 test('No duplica el aviso de desconexion en ninguna de las cinco pestañas', () => {
-  for (const file of ['movimiento-screen.tsx', 'control-screen.tsx', 'programa-screen.tsx', 'consola-screen.tsx']) {
+  for (const file of ['movimiento-screen.tsx', 'movement-homing.tsx', 'programa-screen.tsx', 'consola-screen.tsx']) {
     assert.doesNotMatch(read(file), /DisconnectedNotice/)
   }
 })
