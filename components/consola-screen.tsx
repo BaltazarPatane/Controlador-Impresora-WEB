@@ -6,7 +6,6 @@ import { usePrinter } from '@/lib/printer-store'
 import { ConsoleView } from '@/components/console-view'
 import { CommandInput } from '@/components/command-input'
 import { ConnectionStatus } from '@/components/status-indicators'
-import { DisconnectedNotice } from '@/components/disconnected-notice'
 import { EmergencyStop } from '@/components/emergency-stop'
 import { cn } from '@/lib/utils'
 
@@ -16,7 +15,6 @@ export function ConsolaScreen() {
 
   return (
     <div className="flex h-full flex-col gap-3">
-      <DisconnectedNotice />
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-panel">
       {/* Header */}
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2.5">
