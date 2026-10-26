@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react'
 import { FileCode2, FileUp, Pause, Play, Square, Clock3, Save, Download, RefreshCcw, HardDrive, MemoryStick, PencilLine, Orbit } from 'lucide-react'
 import { EmergencyStop } from '@/components/emergency-stop'
 import { GcodeVisualizer } from '@/components/gcode-visualizer'
-import { HomingControls } from '@/components/homing-controls'
 import { usePrinter } from '@/lib/printer-store'
 import { GCODE_JOB_STATE_LABELS, JOB_ACTIVE_STATES } from '@/lib/printer-types'
 import { formatSdElapsed, sdFraction } from '@/lib/sd-print-report'
@@ -105,9 +104,7 @@ export function ProgramaScreen({ view }: { view: WorkspaceView }) {
         </div>
       </section>}
 
-      {view==='progress'&&<section aria-label="Homing y progreso de impresión" className="min-h-0 flex-1 space-y-3 overflow-y-auto">
-        <HomingControls />
-        <div className="border-t border-border pt-3 text-sm font-semibold">Progreso de impresión</div>
+      {view==='progress'&&<section aria-label="Progreso de impresión" className="min-h-0 flex-1 space-y-3 overflow-y-auto">
         <div className="grid grid-cols-2 gap-1 rounded-lg border border-border bg-background/60 p-1" role="group" aria-label="Origen del programa">
           {([['usb','Archivo de PC',HardDrive],['sd','Tarjeta SD',MemoryStick]] as const).map(([id,label,Icon])=><button key={id} type="button" disabled={busy&&selectedSource!==id} onClick={()=>chooseSource(id)}
             className={`rounded-md px-2 py-2.5 text-sm font-medium disabled:opacity-40 ${selectedSource===id?'bg-primary/15 text-primary':'text-muted-foreground hover:bg-panel'}`}><Icon className="mr-2 inline size-4"/>{label}</button>)}
