@@ -42,6 +42,13 @@ test('El panel Z conserva ambos desplazamientos sin duplicar la lectura de posic
 
 test('Z y Homing ganan ancho frente al control XY', () => {
   const movement = read('movimiento-screen.tsx')
-  assert.match(movement, /grid-cols-\[minmax\(0,0\.86fr\)_clamp\(5\.2rem,18vw,7\.2rem\)_clamp\(5\.2rem,18vw,7\.2rem\)\]/)
+  assert.ok(movement.includes('grid-cols-[minmax(0,1fr)_clamp(5.2rem,16vw,11rem)_clamp(5.2rem,16vw,11rem)]'))
   assert.match(read('movement-homing.tsx'), /min-h-\[52px\]/)
+})
+
+test('Movimiento usa el ancho completo mientras las otras pestañas conservan su límite', () => {
+  const app = read('printer-app.tsx')
+  assert.match(app, /tab === 'movimiento'/)
+  assert.match(app, /max-w-none flex-col px-4 py-3/)
+  assert.match(app, /max-w-5xl flex-col px-4 py-3/)
 })
