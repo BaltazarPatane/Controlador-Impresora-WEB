@@ -108,3 +108,10 @@ La computadora necesita acceder a Internet para descargar inicialmente la págin
 `npm run test:usb` realiza las pruebas sin dependencias externas (transformación TypeScript con Node.js 22). `npm run typecheck` y `npm run build` requieren `npm ci`.
 
 **Estado**: pruebas del protocolo con una Mega simulada, no pruebas de integración en la máquina real; verificar primero con motores desenergizados y un archivo que solo consulte `M115/M114`.
+
+## Consola — modos Normal y Diagnóstico
+
+- **Normal** (predeterminado): mensajes de arranque de Marlin, comandos escritos por el operador o enviados mediante botones, respuestas asociadas, avisos y errores. Muestra el inicio, la pausa y la finalización de programas sin cada línea G-code.
+- **Diagnóstico**: comunicación serie completa con los `ok`, comandos de archivo, sondeos automáticos `M27`, mensajes `echo:busy` y retransmisiones.
+- El filtro es **únicamente visual**: la cola USB procesa todos los mensajes, confirmaciones, errores y estados de la tarjeta SD.
+- Historiales separados: hasta 500 líneas para Normal y 1500 para Diagnóstico. En Diagnóstico se agrupan las actualizaciones de pantalla para mantener fluidez.
