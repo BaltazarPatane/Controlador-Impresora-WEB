@@ -4,7 +4,6 @@ import { PositionDisplay } from '@/components/position-display'
 import { PauseControl } from '@/components/pause-control'
 import { HomingControls } from '@/components/homing-controls'
 import { EmergencyStop } from '@/components/emergency-stop'
-import { DisconnectedNotice } from '@/components/disconnected-notice'
 import { usePrinter } from '@/lib/printer-store'
 
 /**
@@ -23,7 +22,6 @@ export function ControlScreen() {
   const { sdPrint } = usePrinter()
   return (
     <div className="flex h-full flex-col gap-3">
-      <DisconnectedNotice />
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-1">
         <PositionDisplay compact />
         <PauseControl />
