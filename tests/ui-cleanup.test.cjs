@@ -37,7 +37,7 @@ test('Elimina notas extensas sin desactivar la seguridad real', () => {
   assert.match(read('programa-screen.tsx'), /<EmergencyStop compact\s*\/>/)
 })
 
-test('No duplica el aviso de desconexion en ninguna de las cuatro pestañas', () => {
+test('No duplica el aviso de desconexion en ninguna de las cinco pestañas', () => {
   for (const file of ['movimiento-screen.tsx', 'control-screen.tsx', 'programa-screen.tsx', 'consola-screen.tsx']) {
     assert.doesNotMatch(read(file), /DisconnectedNotice/)
   }
