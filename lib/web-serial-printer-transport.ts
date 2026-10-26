@@ -16,11 +16,13 @@
 // real Marlin `ok`, then sends the next. Urgent commands (M112/M410/M108)
 // bypass that FIFO but still share the single serialized writer.
 
+import { visibleInNormalConsole } from './console-log-policy'
 import {
   formatTimestamp,
   uid,
   type JobEvent,
   type JobTag,
+  type ConsoleOrigin,
   type MessageDirection,
   type PauseMarker,
   type Position,
@@ -117,6 +119,8 @@ interface PendingCommand {
   pauseMarker: PauseMarker | null
   /** File-job role (undefined for ordinary manual/handshake commands). */
   jobTag?: JobTag
+  /** Source tagging only; does not alter command transmission. */
+  consoleOrigin: ConsoleOrigin
   /** Controller-assigned id echoed back in job events for correlation. */
   ackId?: number
   /** Numbered protocol line number assigned at write time (null if plain). */
@@ -248,6 +252,7 @@ export class WebSerialPrinterTransport implements PrinterTransport {
         isMovement: isMovementCommand(cmd),
         pauseMarker: meta?.pauseMarker ?? null,
         jobTag: meta?.jobTag,
+        consoleOrigin: meta?.consoleOrigin ?? (meta?.jobTag ? 'file' : 'operator'),
         ackId: meta?.ackId,
         lineNumber: null,
         ackResolve: resolve,
@@ -341,6 +346,7 @@ export class WebSerialPrinterTransport implements PrinterTransport {
       isMovement: isMovementCommand(cmd),
       pauseMarker: meta?.pauseMarker ?? null,
       jobTag: meta?.jobTag,
+      consoleOrigin: meta?.consoleOrigin ?? (meta?.jobTag ? 'file' : 'operator'),
       ackId: meta?.ackId,
       lineNumber: null,
     })
@@ -428,12 +434,13 @@ export class WebSerialPrinterTransport implements PrinterTransport {
       text: 'M115',
       isMovement: false,
       pauseMarker: null,
+      consoleOrigin: 'startup',
       lineNumber: null,
     }
     this.currentCommand = cmd
     this.emitQueue()
     void this.rawWrite(cmd.text + '\n')
-      .then(() => this.log('TX', cmd.text))
+      .then(() => this.log('TX', cmd.text, 'startup'))
       .catch(() => this.cleanup('error', 'Fallo al enviar el handshake'))
 
     this.clearTimer('handshakeTimeoutTimer')
@@ -501,9 +508,10 @@ export class WebSerialPrinterTransport implements PrinterTransport {
   }
 
   private handleIncoming(line: string) {
-    // Every complete Marlin line is shown verbatim as RX (including echo:,
-    // busy:, Error:, warnings, firmware info). We never invent or suppress it.
-    this.log('RX', line)
+    // Receive and parse every Marlin line. Classification affects display only.
+    const origin: ConsoleOrigin = isStartLine(line) || this.connState !== 'connected'
+      ? 'startup' : this.currentCommand?.consoleOrigin ?? 'internal'
+    this.log('RX', line, origin)
 
     // Board reset while already connected: stop trusting queue/pause state.
     if (isStartLine(line) && this.connState === 'connected') {
@@ -615,7 +623,7 @@ export class WebSerialPrinterTransport implements PrinterTransport {
     void this.rawWrite(wire + '\n')
       .then(() => {
         // Log TX only once the bytes have ACTUALLY been written to the Mega.
-        this.log('TX', wire)
+        this.log('TX', wire, next.consoleOrigin)
         if (next.jobTag) {
           this.onJobEvent?.({
             type: 'written',
@@ -766,10 +774,11 @@ export class WebSerialPrinterTransport implements PrinterTransport {
     this.listeners.forEach((listener) => listener(message))
   }
 
-  private log(direction: MessageDirection, content: string) {
+  private log(direction: MessageDirection, content: string, origin: ConsoleOrigin = 'internal') {
     this.emit({
       kind: 'console',
-      entry: { id: uid(), timestamp: formatTimestamp(), direction, content },
+      entry: { id: uid(), timestamp: formatTimestamp(), direction, content, origin,
+        visibleInNormal: visibleInNormalConsole(direction, content, origin) },
     })
   }
 
