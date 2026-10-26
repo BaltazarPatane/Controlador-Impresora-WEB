@@ -7,7 +7,6 @@ import { AppHeader } from '@/components/app-header'
 import { MovimientoScreen } from '@/components/movimiento-screen'
 import { ControlScreen } from '@/components/control-screen'
 import { ProgramaScreen } from '@/components/programa-screen'
-import { ImpresionScreen } from '@/components/impresion-screen'
 import { ConsolaScreen } from '@/components/consola-screen'
 import { BottomNavigation, type TabId } from '@/components/bottom-navigation'
 
@@ -33,8 +32,7 @@ function AppShell() {
         <div className="mx-auto flex h-full w-full max-w-5xl flex-col px-4 py-3">
           {tab === 'movimiento' && <MovimientoScreen />}
           {tab === 'control' && <ControlScreen />}
-          {tab === 'programa' && <ProgramaScreen />}
-          {tab === 'impresion' && <ImpresionScreen />}
+          <div className={tab === 'programa' ? 'flex h-full min-h-0 flex-col' : 'hidden'}><ProgramaScreen /></div>
           {tab === 'consola' && <ConsolaScreen />}
         </div>
       </main>
