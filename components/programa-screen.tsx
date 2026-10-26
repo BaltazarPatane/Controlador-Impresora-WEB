@@ -1,9 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { FileCode2, FileUp, Pause, Play, Square, Clock3, ShieldAlert, Save, Download, RefreshCcw, HardDrive, MemoryStick, PencilLine, ChartNoAxesCombined, Boxes } from 'lucide-react'
+import { FileCode2, FileUp, Pause, Play, Square, Clock3, Save, Download, RefreshCcw, HardDrive, MemoryStick, PencilLine, ChartNoAxesCombined, Boxes } from 'lucide-react'
 import { EmergencyStop } from '@/components/emergency-stop'
-import { DisconnectedNotice } from '@/components/disconnected-notice'
 import { GcodeVisualizer } from '@/components/gcode-visualizer'
 import { usePrinter } from '@/lib/printer-store'
 import { GCODE_JOB_STATE_LABELS, JOB_ACTIVE_STATES } from '@/lib/printer-types'
@@ -81,7 +80,6 @@ export function ProgramaScreen() {
   const tabOptions:[Section,string,typeof FileUp][]=[['file','Cargar archivo',FileUp],['progress','Progreso',ChartNoAxesCombined],['visualizer','Visualizador',Boxes]]
 
   return <div className="flex h-full min-h-0 flex-col gap-3">
-    <DisconnectedNotice />
     <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-card p-3 sm:p-4">
       <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="flex items-center gap-2 text-lg font-semibold"><FileCode2 className="size-5 text-primary"/>Programa</h2>
         <span className="rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted-foreground">{busy?stateLabel:'Listo para cargar o ejecutar'}</span></div>
@@ -146,12 +144,10 @@ export function ProgramaScreen() {
         {selectedSource==='sd'&&sdActive&&<button onClick={()=>{void refreshSdDetails()}} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs"><RefreshCcw className="size-4"/>Actualizar tiempo y archivo SD</button>}
         {sdError&&selectedSource==='sd'&&<p role="alert" className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">{sdError}</p>}
         {job.error&&selectedSource==='usb'&&<p role="alert" className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">{job.error}</p>}
-        <p className="text-xs text-muted-foreground">Los porcentajes tienen distintos orígenes: SD = bytes que informa Marlin; PC = comandos aceptados con «ok». Ninguno garantiza que los movimientos físicos hayan terminado.</p>
       </section>}
 
       {section==='visualizer'&&<section role="tabpanel" className="flex min-h-0 flex-1 flex-col overflow-y-auto"><GcodeVisualizer content={saved} progress={selectedSource==='usb'?job.progress:(sdPercent??0)} source={selectedSource} active={busy}/></section>}
       {error&&<p role="alert" className="shrink-0 rounded-lg border border-danger/40 bg-danger/10 p-3 text-xs text-danger">{error}</p>}
-      <p className="flex shrink-0 items-start gap-2 rounded-xl border border-warning/30 bg-warning/5 p-2.5 text-[11px] leading-relaxed text-muted-foreground"><ShieldAlert className="size-4 shrink-0 text-warning"/> No cierres la página ni desconectes el USB mientras se envía un archivo desde esta computadora. La cancelación no es una parada física inmediata. Para emergencias utilizá el pulsador cableado.</p>
     </div>
     <div className="shrink-0"><EmergencyStop compact/></div>
   </div>
