@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { RotateCcw, Eye, EyeOff, Orbit, Scan, ZoomIn, ZoomOut } from 'lucide-react'
+import { RotateCcw, Eye, EyeOff, Orbit, ZoomIn, ZoomOut } from 'lucide-react'
 import { buildToolpath, type Point3, type Toolpath } from '@/lib/gcode-geometry'
 
 type Mode = 'live' | 'final'
@@ -134,7 +134,6 @@ export function GcodeVisualizer({ content, progress, source, active }: { content
       {drawing.segments.length>40000&&<p className="text-xs text-warning">Para conservar fluidez en archivos grandes se simplifica el dibujo a una muestra de hasta 40.000 segmentos; el archivo transmitido a Marlin no se modifica.</p>}
       {drawing.warnings.map(w=><p key={w} className="text-xs text-warning">{w}</p>)}
       {source==='sd'&&active&&<p className="text-xs text-warning">En SD, el trazado progresivo es una referencia proporcional a bytes procesados, no una posición de herramienta confirmada. Para que corresponda al diseño, abrí una copia local del mismo archivo SD.</p>}
-      <p className="flex items-start gap-2 text-xs text-muted-foreground"><Scan className="size-4 shrink-0"/>La visualización es informativa. Homing, correcciones geométricas de Marlin, electroválvulas y movimientos internos pueden modificar el recorrido real. El indicador USB avanza al recibir «ok», no cuando termina físicamente cada movimiento.</p>
     </>}
   </section>
 }
