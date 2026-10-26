@@ -4,6 +4,13 @@ Interfaz **Chrome de escritorio**, basada en la interfaz original **ESP32-C3 v3.
 
 **Comunicación real**: Chrome ⇄ Web Serial ⇄ USB ⇄ Arduino Mega 2560 ⇄ Marlin 2.1.2.5, a 115200 baudios. No se utiliza Wi-Fi, una ESP32, Cloudflare Functions ni un backend para transmitir los comandos. El sitio alojado en Cloudflare entrega solo los recursos web; los G-code seleccionados permanecen en la computadora local.
 
+## Ajustes visuales (v2.1)
+
+- Eliminado el encabezado de estado superior para ganar espacio de trabajo.
+- Retiradas las notas descriptivas extensas del progreso, visualizador y Programa; no se modificaron cálculos ni bloqueos de seguridad.
+- Con USB desconectado, el espacio del botón de parada muestra un estado compacto con la acción **Conectar USB** (o **Reintentar** ante un error). Mientras se conecta indica el estado de espera; **no ofrece una falsa parada de emergencia sin conexión**.
+- Con Marlin conectado se mantiene la parada de emergencia de **1 segundo**, con el mismo mecanismo de pulsación continua. La parada física sigue siendo imprescindible.
+
 ## Funciones
 
 - **Movimiento**: desplazamientos manuales X, Y y Z; homing; posiciones reales `M114`, con bloqueo cuando hay un trabajo activo.
