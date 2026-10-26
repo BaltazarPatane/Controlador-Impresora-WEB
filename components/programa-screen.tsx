@@ -1,26 +1,26 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { FileCode2, FileUp, Pause, Play, Square, Clock3, Save, Download, RefreshCcw, HardDrive, MemoryStick, PencilLine, ChartNoAxesCombined, Boxes } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { FileCode2, FileUp, Pause, Play, Square, Clock3, Save, Download, RefreshCcw, HardDrive, MemoryStick, PencilLine, Orbit } from 'lucide-react'
 import { EmergencyStop } from '@/components/emergency-stop'
 import { GcodeVisualizer } from '@/components/gcode-visualizer'
+import { HomingControls } from '@/components/homing-controls'
 import { usePrinter } from '@/lib/printer-store'
 import { GCODE_JOB_STATE_LABELS, JOB_ACTIVE_STATES } from '@/lib/printer-types'
 import { formatSdElapsed, sdFraction } from '@/lib/sd-print-report'
 
-type Section='file'|'progress'|'visualizer'
+export type WorkspaceView = 'file' | 'progress' | 'visualizer'
 type Source='usb'|'sd'
 const MAX_FILE = 20*1024*1024
 const allowedFile=/\.(?:gcode|gco|gc|ngc|txt)$/i
 
-export function ProgramaScreen() {
+export function ProgramaScreen({ view }: { view: WorkspaceView }) {
   const {
     connection, job, jobElapsedSeconds, loadProgram, startProgram, pauseProgram, resumeProgram, cancelProgram,
     emergencyStopActive, sdPrint, sdDetails, refreshSdDetails, sdFiles, sdBusy, sdError,
     refreshSdFiles, startSdProgram, pauseSdProgram, resumeSdProgram, cancelSdProgram,
   }=usePrinter()
   const picker=useRef<HTMLInputElement>(null)
-  const [section,setSection]=useState<Section>('file')
   const [source,setSource]=useState<Source>('usb')
   const [fileName,setFileName]=useState('')
   const [draft,setDraft]=useState('')
@@ -56,7 +56,7 @@ export function ProgramaScreen() {
       if(file.size>MAX_FILE)throw Error('El archivo supera el máximo de 20 MB.')
       const text=await file.text()
       loadProgram(file.name,file.size,text)
-      setFileName(file.name);setDraft(text);setSaved(text);setSource('usb');setSection('file')
+      setFileName(file.name);setDraft(text);setSaved(text);setSource('usb')
     }catch(e){setError(e instanceof Error?e.message:'No se pudo abrir el archivo.')}
     finally{setProcessing(false);if(picker.current)picker.current.value=''}
   }
@@ -77,18 +77,15 @@ export function ProgramaScreen() {
   }
   const chooseSource=(mode:Source)=>{if(busy)return;setSource(mode);setCancelConfirm(false)}
   const progress=percent??0
-  const tabOptions:[Section,string,typeof FileUp][]=[['file','Cargar archivo',FileUp],['progress','Progreso',ChartNoAxesCombined],['visualizer','Visualizador',Boxes]]
+  const title = view === 'progress' ? 'Control' : view === 'visualizer' ? 'Visualizador' : 'Programa'
+  const Icon = view === 'visualizer' ? Orbit : FileCode2
 
   return <div className="flex h-full min-h-0 flex-col gap-3">
     <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-card p-3 sm:p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="flex items-center gap-2 text-lg font-semibold"><FileCode2 className="size-5 text-primary"/>Programa</h2>
-        <span className="rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted-foreground">{busy?stateLabel:'Listo para cargar o ejecutar'}</span></div>
-      <div className="grid shrink-0 grid-cols-3 gap-1 rounded-xl bg-background/70 p-1" role="tablist" aria-label="Secciones de Programa">
-        {tabOptions.map(([key,title,Icon])=><button key={key} role="tab" aria-selected={section===key} type="button" onClick={()=>setSection(key)}
-          className={`flex items-center justify-center gap-1.5 rounded-lg px-2 py-2.5 text-xs font-semibold transition-colors sm:text-sm ${section===key?'bg-panel text-primary shadow-sm':'text-muted-foreground hover:text-foreground'}`}><Icon className="size-4 shrink-0"/>{title}</button>)}
-      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="flex items-center gap-2 text-lg font-semibold"><Icon className="size-5 text-primary"/>{title}</h2>
+        {view === 'progress' && <span className="rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted-foreground">{busy?stateLabel:'Listo para cargar o ejecutar'}</span>}</div>
 
-      {section==='file'&&<section role="tabpanel" className="min-h-0 flex-1 space-y-3 overflow-y-auto">
+      {view==='file'&&<section aria-label="Cargar y editar programa" className="min-h-0 flex-1 space-y-3 overflow-y-auto">
         <div className="flex flex-wrap items-center gap-2">
           <input ref={picker} type="file" hidden accept=".gcode,.gco,.gc,.ngc,.txt" onChange={e=>{void openFile(e.target.files?.[0])}}/>
           <button onClick={()=>picker.current?.click()} disabled={hostBusy||processing} className="flex items-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-40"><FileUp className="size-4"/>{processing?'Abriendo…':'Abrir archivo'}</button>
@@ -108,7 +105,9 @@ export function ProgramaScreen() {
         </div>
       </section>}
 
-      {section==='progress'&&<section role="tabpanel" className="min-h-0 flex-1 space-y-3 overflow-y-auto">
+      {view==='progress'&&<section aria-label="Homing y progreso de impresión" className="min-h-0 flex-1 space-y-3 overflow-y-auto">
+        <HomingControls />
+        <div className="border-t border-border pt-3 text-sm font-semibold">Progreso de impresión</div>
         <div className="grid grid-cols-2 gap-1 rounded-lg border border-border bg-background/60 p-1" role="group" aria-label="Origen del programa">
           {([['usb','Archivo de PC',HardDrive],['sd','Tarjeta SD',MemoryStick]] as const).map(([id,label,Icon])=><button key={id} type="button" disabled={busy&&selectedSource!==id} onClick={()=>chooseSource(id)}
             className={`rounded-md px-2 py-2.5 text-sm font-medium disabled:opacity-40 ${selectedSource===id?'bg-primary/15 text-primary':'text-muted-foreground hover:bg-panel'}`}><Icon className="mr-2 inline size-4"/>{label}</button>)}
@@ -146,7 +145,7 @@ export function ProgramaScreen() {
         {job.error&&selectedSource==='usb'&&<p role="alert" className="rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-danger">{job.error}</p>}
       </section>}
 
-      {section==='visualizer'&&<section role="tabpanel" className="flex min-h-0 flex-1 flex-col overflow-y-auto"><GcodeVisualizer content={saved} progress={selectedSource==='usb'?job.progress:(sdPercent??0)} source={selectedSource} active={busy}/></section>}
+      {view==='visualizer'&&<section aria-label="Visualizador de G-code" className="flex min-h-0 flex-1 flex-col overflow-y-auto"><GcodeVisualizer content={saved} progress={selectedSource==='usb'?job.progress:(sdPercent??0)} source={selectedSource} active={busy}/></section>}
       {error&&<p role="alert" className="shrink-0 rounded-lg border border-danger/40 bg-danger/10 p-3 text-xs text-danger">{error}</p>}
     </div>
     <div className="shrink-0"><EmergencyStop compact/></div>
