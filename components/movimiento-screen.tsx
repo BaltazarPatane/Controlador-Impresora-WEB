@@ -19,7 +19,7 @@ export function MovimientoScreen() {
     <div className="flex h-full flex-col gap-3">
       <PositionDisplay compact />
       <StepSelector />
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,0.86fr)_clamp(5.2rem,18vw,7.2rem)_clamp(5.2rem,18vw,7.2rem)] gap-2 sm:gap-3">
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_clamp(5.2rem,16vw,11rem)_clamp(5.2rem,16vw,11rem)] gap-2 sm:gap-3">
         <XyJogControl />
         <ZJogControl />
         <MovementHoming />
