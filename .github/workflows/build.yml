@@ -20,6 +20,7 @@ jobs:
       - name: Pruebas de control y protocolo
         run: |
           npm run test:usb
+          node --test tests/geometry-sd.test.cjs
           npm test
       - name: Verificar TypeScript
         run: npm run typecheck
