@@ -20,6 +20,7 @@ import {
 } from 'react'
 import { useToast } from '@/components/toaster'
 import { parseSdDetail, type SdPrintDetails } from '@/lib/sd-print-report'
+import { parseSdListLine, isSdListBegin, isSdListEnd, isSdFileOpened, isSdFileOpenFailed, type SdFile } from '@/lib/sd-card'
 import {
   WebSerialPrinterTransport,
   isWebSerialSupported,
@@ -71,6 +72,14 @@ interface PrinterStoreValue {
   sdPrint: { active: boolean; paused: boolean; done: number; total: number }
   sdDetails: SdPrintDetails
   refreshSdDetails: () => Promise<void>
+  sdFiles: SdFile[]
+  sdBusy: boolean
+  sdError: string | null
+  refreshSdFiles: () => Promise<void>
+  startSdProgram: (name: string) => Promise<void>
+  pauseSdProgram: () => Promise<void>
+  resumeSdProgram: () => Promise<void>
+  cancelSdProgram: () => Promise<void>
   connection: PrinterConnectionState
   machineState: MachineState | null
   position: Position
@@ -148,6 +157,12 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
   const [linkDetail, setLinkDetail] = useState('')
   const [sdPrint, setSdPrint] = useState({ active: false, paused: false, done: 0, total: 0 })
   const [sdDetails, setSdDetails] = useState<SdPrintDetails>({ filename: null, elapsedSeconds: null })
+  const [sdFiles, setSdFiles] = useState<SdFile[]>([])
+  const [sdBusy, setSdBusy] = useState(false)
+  const sdBusyRef = useRef(false)
+  const [sdError, setSdError] = useState<string | null>(null)
+  const sdListRef = useRef<{ collecting: boolean; files: SdFile[] } | null>(null)
+  const sdOpenRef = useRef<{ opened: boolean; failed: boolean } | null>(null)
   const lastSdDetailsRequest = useRef(0)
   const resetSeen = useRef(false)
 
@@ -172,6 +187,7 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
   pendingMovementCountRef.current = pendingMovementCount
   const sdPrintRef = useRef(sdPrint)
   sdPrintRef.current = sdPrint
+  sdBusyRef.current = sdBusy
   const canOperate = connection === 'connected' && !emergencyStopActive && pauseState === 'running' && !sdPrint.active && !sdPrint.paused && !jobController.active
 
   const appendEntry = useCallback(
@@ -207,6 +223,22 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
         case 'console':
           if (message.entry.direction === 'RX') {
             const value = message.entry.content.trim()
+            // M20: record only data between Marlin's real delimiters.
+            if (sdListRef.current) {
+              if (isSdListBegin(value)) { sdListRef.current.collecting = true; sdListRef.current.files = [] }
+              else if (isSdListEnd(value)) {
+                const files = sdListRef.current.files
+                sdListRef.current.collecting = false
+                setSdFiles(files)
+              } else if (sdListRef.current.collecting) {
+                const file = parseSdListLine(value)
+                if (file && !sdListRef.current.files.some(f => f.name === file.name)) sdListRef.current.files.push(file)
+              }
+            }
+            if (sdOpenRef.current) {
+              if (isSdFileOpened(value)) sdOpenRef.current.opened = true
+              if (isSdFileOpenFailed(value)) sdOpenRef.current.failed = true
+            }
             const sd = /SD printing byte\s*(\d+)\s*\/\s*(\d+)/i.exec(value)
             if (sd) { sdKnownRef.current = true; setSdPrint(prev => ({ ...prev, active: true, done: Number(sd[1]), total: Number(sd[2]) })) }
             else if (/(?:Not SD printing|No SD card|No media|Card not mounted|Media not inserted)/i.test(value)) { sdKnownRef.current = true; setSdPrint({ active: false, paused: false, done: 0, total: 0 }) }
@@ -266,6 +298,11 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
             sdKnownRef.current = false
             setSdPrint({ active: false, paused: false, done: 0, total: 0 })
             setSdDetails({ filename: null, elapsedSeconds: null })
+            sdListRef.current = null
+            sdOpenRef.current = null
+            setSdBusy(false)
+            setSdError(null)
+            setSdFiles([])
             // Any non-connected state (connecting/disconnected/error, including
             // a detected board reset) means Marlin is not ready: clear stale
             // position and invalidate pause/queue tracking. Never fabricate a
@@ -343,7 +380,7 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
   const startProgram = useCallback(async () => {
     if (connectionRef.current !== 'connected' || emergencyRef.current) { toast('Conectá Marlin antes de imprimir', 'danger'); return }
     if (!sdKnownRef.current) { toast('Esperando el estado SD de Marlin (M27)', 'danger'); return }
-    if (sdPrintRef.current.active || sdPrintRef.current.paused) { toast('Ya hay una impresión SD activa', 'danger'); return }
+    if (sdPrintRef.current.active || sdPrintRef.current.paused || sdBusyRef.current) { toast('La tarjeta SD está ocupada', 'danger'); return }
     try { await jobController.start() }
     catch (e) { toast(e instanceof Error ? e.message : 'No se pudo iniciar', 'danger') }
   }, [jobController, toast])
@@ -616,6 +653,95 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
     }
   }, [transport, jobController])
 
+  // SD operation is exclusive with host-streamed G-code, other serial commands
+  // and emergency state. M20/M23/M24/M25/M524 belong to Marlin itself.
+  const ensureSdReady = useCallback((allowSdActive = false) => {
+    if (connectionRef.current !== 'connected') throw new Error('Conectá la impresora por USB.')
+    if (emergencyRef.current) throw new Error('Parada de emergencia activa.')
+    if (jobController.active) throw new Error('Hay un programa USB en ejecución.')
+    if (sdBusyRef.current) throw new Error('Esperá a que termine la operación anterior de la tarjeta SD.')
+    if (!allowSdActive && (sdPrintRef.current.active || sdPrintRef.current.paused)) throw new Error('Ya hay una impresión desde SD activa.')
+    if (!transport.isIdle()) throw new Error('La comunicación serie está ocupada. Intentá de nuevo.')
+  }, [jobController, transport])
+
+  const refreshSdFiles = useCallback(async () => {
+    if (sdBusy) return
+    setSdError(null)
+    try {
+      ensureSdReady(true)
+      setSdBusy(true)
+      sdListRef.current = { collecting: false, files: [] }
+      await transport.sendTracked('M20')
+      if (!sdListRef.current?.collecting && !sdListRef.current?.files.length) {
+        // Empty cards are valid; a missing begin/end is not necessarily a card.
+        // Do not show the previous card's filenames.
+        setSdFiles([])
+      }
+    } catch(e) {
+      setSdError(e instanceof Error ? e.message : 'No se pudo consultar la tarjeta SD.')
+    } finally { sdListRef.current = null; setSdBusy(false) }
+  }, [sdBusy, ensureSdReady, transport])
+
+  const startSdProgram = useCallback(async (name: string) => {
+    if (sdBusy) return
+    setSdError(null)
+    try {
+      ensureSdReady()
+      if (!sdKnownRef.current) throw new Error('Esperando confirmación del estado SD de Marlin.')
+      // M23 accepts the short 8.3 filename obtained from M20; do not permit
+      // arbitrary strings, whitespace or user-constructed command injection.
+      if (!sdFiles.some(file => file.name === name) || !/^[A-Za-z0-9_.$~\-/]+$/.test(name) || name.includes('..'))
+        throw new Error('Elegí un archivo de la lista de la tarjeta SD.')
+      setSdBusy(true)
+      sdOpenRef.current = { opened: false, failed: false }
+      await transport.sendTracked(`M23 ${name}`)
+      if (!sdOpenRef.current.opened || sdOpenRef.current.failed)
+        throw new Error('Marlin no confirmó la apertura del archivo SD. No se inició la impresión.')
+      await transport.sendTracked('M24')
+      setSdDetails({ filename: name, elapsedSeconds: null })
+      // The next real M27 report will establish the active byte counters.
+      await transport.sendTracked('M27')
+    } catch(e) {
+      setSdError(e instanceof Error ? e.message : 'No se pudo iniciar el archivo SD.')
+    } finally { sdOpenRef.current = null; setSdBusy(false) }
+  }, [sdBusy, sdFiles, ensureSdReady, transport])
+
+  const pauseSdProgram = useCallback(async () => {
+    if (sdBusy) return
+    try {
+      ensureSdReady(true)
+      if (!sdPrintRef.current.active || sdPrintRef.current.paused) return
+      setSdBusy(true)
+      await transport.sendTracked('M25')
+      setSdPrint(current=>({...current,paused:true})) // M25 accepted, M27 confirms bytes
+    } catch(e){setSdError(e instanceof Error?e.message:'No se pudo pausar la impresión SD.')}
+    finally{setSdBusy(false)}
+  },[sdBusy,ensureSdReady,transport])
+  const resumeSdProgram = useCallback(async () => {
+    if (sdBusy) return
+    try {
+      ensureSdReady(true)
+      if (!sdPrintRef.current.paused) return
+      setSdBusy(true)
+      await transport.sendTracked('M24')
+      setSdPrint(current=>({...current,paused:false}))
+    } catch(e){setSdError(e instanceof Error?e.message:'No se pudo reanudar la impresión SD.')}
+    finally{setSdBusy(false)}
+  },[sdBusy,ensureSdReady,transport])
+  const cancelSdProgram = useCallback(async () => {
+    if (sdBusy) return
+    try {
+      ensureSdReady(true)
+      if (!sdPrintRef.current.active && !sdPrintRef.current.paused) return
+      setSdBusy(true)
+      await transport.sendTracked('M524')
+      // Abort is asynchronous inside Marlin. Never report completion until
+      // M27 actually confirms that SD printing has stopped.
+      await transport.sendTracked('M27')
+    } catch(e){setSdError(e instanceof Error?e.message:'No se pudo cancelar la impresión SD.')}
+    finally{setSdBusy(false)}
+  },[sdBusy,ensureSdReady,transport])
+
   const clearConsole = useCallback(() => setConsoleEntries([]), [])
 
   const value = useMemo<PrinterStoreValue>(
@@ -626,6 +752,7 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
       sdPrint,
       sdDetails,
       refreshSdDetails,
+      sdFiles, sdBusy, sdError, refreshSdFiles, startSdProgram, pauseSdProgram, resumeSdProgram, cancelSdProgram,
       connectPrinter: connectUsb,
       connection,
       machineState,
@@ -652,6 +779,7 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       linkDetail, sdPrint, sdDetails, refreshSdDetails,
+      sdFiles, sdBusy, sdError, refreshSdFiles, startSdProgram, pauseSdProgram, resumeSdProgram, cancelSdProgram,
       job, jobElapsedSeconds, loadProgram, startProgram, pauseProgram, resumeProgram, cancelProgram,
       mode,
       connection,
